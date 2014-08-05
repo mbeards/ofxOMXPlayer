@@ -2,6 +2,10 @@
 
 #include "ofMain.h"
 #include "ofxOMXPlayer.h"
+#include "ofxOsc.h"
+
+#define HOST "192.168.1.51"
+#define PORT 12345
 
 class multiPlayer : public ofBaseApp{
 
@@ -11,9 +15,15 @@ class multiPlayer : public ofBaseApp{
 		void update();
 		void draw();
 		void keyPressed(int key);
-	
-	
-	vector<ofxOMXPlayer*> omxPlayers; 
+
+    void gotMessage(ofMessage msg);
+
+	private:
+    int mTargetFrame;
+    bool mResetFlag;
+	  vector<ofxOMXPlayer*> omxPlayers; 
+    ofxOscSender mSender;
+    ofxOscReceiver mReceiver;
 
 
 };

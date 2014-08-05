@@ -14,10 +14,10 @@ void multiPlayer::setup()
 		vector<ofFile> files = currentVideoDirectory.getFiles();
 		
 		
-		for (int i=0; i<files.size(); i++) 
+		for (int i=0; i<1; ++i) //files.size(); i++) 
 		{
 			ofxOMXPlayerSettings settings;
-			settings.videoPath = files[i].path();
+			settings.videoPath = files[0].path();
 			settings.useHDMIForAudio = true;	//default true
 			settings.enableLooping = true;		//default true
 			settings.enableAudio = true;		//default true, save resources by disabling
@@ -37,33 +37,71 @@ void multiPlayer::setup()
 			ofxOMXPlayer* player = new ofxOMXPlayer();
 			player->setup(settings);
 			omxPlayers.push_back(player);
+      player->setPaused(true);
 		}
 	}
 
+  mSender.setup( HOST, PORT );
+  mReceiver.setup(PORT);
+  mTargetFrame = 0;
 }
 
 //--------------------------------------------------------------
 void multiPlayer::update()
 {
-	
-	
-	
+
+  // handle osc input
+  while(mReceiver.hasWaitingMessages()) {
+    ofxOscMessage lNewMessage;
+    mReceiver.getNextMessage(&lNewMessage);
+
+    if(lNewMessage.getAddress() == "/FRAME") {
+      mTargetFrame = lNewMessage.getArgAsInt32(0);
+    }
+  }
+
 }
 
 
 //--------------------------------------------------------------
 void multiPlayer::draw(){
 	ofBackgroundGradient(ofColor::red, ofColor::black, OF_GRADIENT_BAR);
+	
+  ofxOscMessage m;
+  m.setAddress("/player/frame");
+  for(int i = 0; i<omxPlayers.size(); i++) {
+  omxPlayers[i]->setPaused(true);
+    //omxPlayers[i]->stepFrameForward();
+    if(mTargetFrame == 0 && !mResetFlag) {
+      mResetFlag = true;
+      omxPlayers[i]->restartMovie();
+      continue;
+    } else if (mTargetFrame == 0) {
+      continue;
+    }
+
+    mResetFlag = false;
+    int lCurrentFrame = omxPlayers[i]->getCurrentFrame();
+    for(int lCurrentFrame = omxPlayers[i]->getCurrentFrame(); lCurrentFrame <= mTargetFrame; ++lCurrentFrame) {
+      omxPlayers[i]->stepFrameForward();
+    }
+    m.addIntArg(lCurrentFrame);
+	
+  }
+
+  mSender.sendMessage(m);
+
+
 	for (int i=0; i<omxPlayers.size(); i++) 
 	{
 		ofxOMXPlayer* player = omxPlayers[i];
-		if (player->isPlaying()) 
-		{
+		//if (player->isPlaying()) 
+		//{
 			ofPushMatrix();
 				ofTranslate(player->settings.displayRect.x, 0, 0);
 				ofDrawBitmapStringHighlight(player->getInfo(), 60, 60, ofColor(ofColor::black, 90), ofColor::yellow);
 			ofPopMatrix();
-		}		
+		//}		
 	}
 	stringstream fpsInfo;
 	fpsInfo <<"\n" <<  "APP FPS: "+ ofToString(ofGetFrameRate());
@@ -81,4 +119,6 @@ void multiPlayer::keyPressed  (int key){
 	}
 	
 }
+
+void multiPlayer::gotMessage(ofMessage m) {}
 
